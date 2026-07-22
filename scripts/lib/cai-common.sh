@@ -41,33 +41,148 @@ cai_prompt_default() {
   printf -v "$__var" '%s' "$__reply"
 }
 
+cai_trim_token() {
+  printf '%s' "$1" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+}
+
+# IDE terminals (e.g. Cursor) cap input lines at ~1KB — pasted JWTs fill the buffer
+# and block further typing/Enter. Never read token content from the terminal line.
+JWT_FILE="${CAI_JWT_FILE:-${CAI_HOME}/jwt.txt}"
+
+cai_drain_tty_line() {
+  local c=""
+  while IFS= read -r -n 1 -t 0.05 c </dev/tty 2>/dev/null; do
+    [ -z "$c" ] && break
+  done
+}
+
+cai_press_enter_only() {
+  local key=""
+  while true; do
+    IFS= read -r -n 1 key </dev/tty 2>/dev/null || IFS= read -r -n 1 key || key=""
+    if [ -z "$key" ]; then
+      printf '\n' >&2
+      cai_drain_tty_line
+      return 0
+    fi
+    cai_log "Press Enter only — do not paste the JWT into this terminal."
+    cai_drain_tty_line
+  done
+}
+
+cai_read_single_key() {
+  local __var="$1" __prompt="$2" key=""
+  printf '%s' "$__prompt" >&2
+  IFS= read -r -n 1 key </dev/tty 2>/dev/null || IFS= read -r -n 1 key || key=""
+  printf '\n' >&2
+  cai_drain_tty_line
+  printf -v "$__var" '%s' "$key"
+}
+
+cai_read_jwt_from_clipboard() {
+  local __var="$1" raw=""
+  if command -v pbpaste >/dev/null 2>&1; then
+    raw="$(pbpaste 2>/dev/null || true)"
+  elif command -v wl-paste >/dev/null 2>&1; then
+    raw="$(wl-paste -n 2>/dev/null || wl-paste 2>/dev/null || true)"
+  elif command -v xclip >/dev/null 2>&1; then
+    raw="$(xclip -selection clipboard -o 2>/dev/null || true)"
+  else
+    return 1
+  fi
+
+  raw="$(cai_trim_token "$raw")"
+  [ -n "$raw" ] || return 1
+  printf -v "$__var" '%s' "$raw"
+  return 0
+}
+
+cai_read_jwt_from_file() {
+  local __var="$1" raw=""
+  [ -s "$JWT_FILE" ] || return 1
+  raw="$(cai_trim_token "$(cat "$JWT_FILE")")"
+  rm -f "$JWT_FILE"
+  [ -n "$raw" ] || return 1
+  printf -v "$__var" '%s' "$raw"
+  return 0
+}
+
+cai_prompt_jwt_via_file() {
+  local __var="$1" token=""
+  umask 077
+  : >"$JWT_FILE" || cai_die "Cannot create ${JWT_FILE}"
+  chmod 600 "$JWT_FILE"
+  cai_log ""
+  cai_log "Paste your JWT into this file (not the terminal):"
+  cai_log "  ${JWT_FILE}"
+  cai_log ""
+  if cai_have_cmd cursor; then
+    cursor "$JWT_FILE" >/dev/null 2>&1 &
+  elif cai_have_cmd code; then
+    code "$JWT_FILE" >/dev/null 2>&1 &
+  elif [ -n "${EDITOR:-}" ]; then
+    # shellcheck disable=SC2086
+    $EDITOR "$JWT_FILE" >/dev/null 2>&1 &
+  fi
+  cai_log "Open the file in your editor, paste the full token, save, then press Enter here."
+  cai_press_enter_only
+  cai_read_jwt_from_file token || cai_die "No JWT in ${JWT_FILE}. Paste token, save, then try again."
+  cai_log "JWT loaded (${#token} characters)."
+  printf -v "$__var" '%s' "$token"
+}
+
 cai_prompt_secret_default() {
-  local __var="$1" __prompt="$2" __default="$3" __reply=""
+  local __var="$1" __prompt="$2" __default="$3" token="" choice=""
   if ! cai_is_interactive; then
     printf -v "$__var" '%s' "$__default"
     return 0
   fi
+
+  cai_log ""
+  cai_log "${__prompt}"
+  cai_log "This terminal cannot accept long JWTs (~1KB line limit). Never paste the token here."
   if [ -n "$__default" ]; then
-    cai_log "${__prompt} — press Enter to keep saved token, or paste a new one:"
+    cai_log "  Enter  keep saved token"
+    cai_log "  r      replace from clipboard (Cmd+C first)"
+    cai_log "  f      paste into a file instead (recommended in Cursor)"
+    cai_read_single_key choice "Choice [Enter/r/f]: "
+    if [ -z "$choice" ]; then
+      printf -v "$__var" '%s' "$__default"
+      return 0
+    fi
+    choice="$(printf '%s' "$choice" | tr '[:upper:]' '[:lower:]')"
+    if [ "$choice" = "f" ]; then
+      cai_prompt_jwt_via_file token
+      printf -v "$__var" '%s' "$token"
+      return 0
+    fi
+    if [ "$choice" != "r" ]; then
+      cai_log "Unrecognized choice — loading new token."
+    fi
   else
-    cai_log "${__prompt} — paste token, then press Enter:"
+    cai_log "  Enter  load from clipboard (Cmd+C first)"
+    cai_log "  f      paste into a file instead (recommended in Cursor)"
+    cai_read_single_key choice "Choice [Enter/f]: "
+    if [ "$choice" = "f" ] || [ "$choice" = "F" ]; then
+      cai_prompt_jwt_via_file token
+      printf -v "$__var" '%s' "$token"
+      return 0
+    fi
   fi
-  cai_log "(Visible while pasting — avoids terminal hang with long JWTs.)"
 
-  # read -rs + bracketed paste hangs on long JWT pastes in many terminals (Cursor, iTerm, etc.)
-  if [ -r /dev/tty ]; then
-    printf '\e[?2004l' >/dev/tty 2>/dev/null || true
-    read -r __reply </dev/tty || __reply=""
-    printf '\e[?2004h' >/dev/tty 2>/dev/null || true
+  cai_log "Copy JWT to clipboard (Cmd+C), then press Enter."
+  cai_press_enter_only
+  if cai_read_jwt_from_clipboard token; then
+    cai_log "JWT loaded (${#token} characters)."
+  elif [ -n "$__default" ]; then
+    cai_log "Clipboard empty — keeping saved token."
+    token="$__default"
   else
-    read -r __reply || __reply=""
+    cai_die "Could not read JWT. Press f for file method, or set CAI_CDP_TOKEN."
   fi
 
-  # Trim whitespace/newlines accidentally included when pasting
-  __reply="$(printf '%s' "$__reply" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-
-  if [ -z "$__reply" ]; then __reply="$__default"; fi
-  printf -v "$__var" '%s' "$__reply"
+  [ -n "$token" ] || cai_die "JWT is empty."
+  printf -v "$__var" '%s' "$token"
 }
 
 cai_shell_quote() {

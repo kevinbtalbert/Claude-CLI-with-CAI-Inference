@@ -61,8 +61,6 @@ On reload, press **Enter** to keep saved URL and token.
 - **Generate JWT Token** on the Model Endpoint page (quick test), or
 - **Knox JWT** from Data Lake → Token Integration (recommended for daily use)
 
-Paste the token and press **Enter**. It will be visible while pasting (this avoids a known terminal hang with long JWTs). Alternatively: `export CAI_CDP_TOKEN='...'` before running the installer.
-
 ---
 
 ## 4. Run Claude Code (every session)
@@ -87,7 +85,7 @@ claude-cai --stop-proxy              # stop background LiteLLM
 |---------|-----|
 | `command not found: claude-cai` | Add `~/.local/bin` to your PATH, or re-run the installer |
 | `401 Unauthorized` | JWT expired — generate a new one and run `claude-cai --reconfigure` |
-| Paste JWT then nothing happens | Paste token, press **Enter**, wait for "Checking endpoint..." — or set `CAI_CDP_TOKEN` in the environment |
+| Can't type or press Enter after pasting JWT | Terminal line is full (~1KB). Open a **new** terminal tab and set as an export first. |
 | Chat works, tools don't | Model needs tool calling enabled on the endpoint (vLLM: `--enable-auto-tool-choice --tool-call-parser <parser>`) |
 | `Not installed` | Run `./scripts/install-cai-claude.sh` |
 
