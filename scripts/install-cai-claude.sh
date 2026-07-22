@@ -190,12 +190,12 @@ configure_endpoint() {
 
   cai_load_config
 
-  if [ -n "${CAI_API_BASE:-}" ] && [ -n "${CAI_CDP_TOKEN:-}" ] && ! is_interactive; then
+  if [ -z "${CAI_API_BASE:-}" ] || [ -z "${CAI_CDP_TOKEN:-}" ]; then
+    cai_prompt_user_config
+  else
     CAI_API_BASE="$(cai_normalize_url "$CAI_API_BASE" "$CAI_CDP_TOKEN")"
     [ -n "${CAI_MODEL_NAME:-}" ] || CAI_MODEL_NAME="$(cai_fetch_model_name "$CAI_API_BASE" "$CAI_CDP_TOKEN")"
     cai_save_config
-  else
-    cai_prompt_user_config
   fi
 
   log "  Validating connection ..."

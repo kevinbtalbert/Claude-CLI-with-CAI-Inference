@@ -43,7 +43,7 @@ The installer will:
 4. Ask for your **endpoint URL** and **JWT** (see below)
 5. Install the `claude-cai` command to `~/.local/bin`
 
-On reload, press **Enter** to keep saved URL and token.
+After install, `claude-cai` uses saved config silently. Run `claude-cai --reconfigure` to change URL, token, or model (press **Enter** to keep each saved value).
 
 ---
 

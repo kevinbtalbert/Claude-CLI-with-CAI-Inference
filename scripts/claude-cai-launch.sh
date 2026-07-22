@@ -62,8 +62,6 @@ main() {
 
   if [ -z "${CAI_API_BASE:-}" ] || [ -z "${CAI_CDP_TOKEN:-}" ]; then
     cai_prompt_user_config
-  elif cai_is_interactive; then
-    cai_prompt_user_config
   else
     CAI_API_BASE="$(cai_normalize_url "$CAI_API_BASE" "$CAI_CDP_TOKEN")"
   fi

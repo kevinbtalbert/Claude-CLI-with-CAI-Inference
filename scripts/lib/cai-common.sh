@@ -389,8 +389,8 @@ cai_prompt_user_config() {
 
   if cai_is_interactive; then
     cai_log ""
-    cai_log "Claude Code + Cloudera AI Inference"
-    cai_log "Press Enter to keep saved values in [brackets]."
+    cai_log "Claude Code + Cloudera AI Inference — configuration"
+    cai_log "Press Enter to keep saved values in [brackets], or enter new ones."
     cai_log ""
   fi
 
@@ -425,7 +425,7 @@ cai_launch_claude() {
   cai_ensure_claude
   export ANTHROPIC_BASE_URL="$PROXY_URL"
   export ANTHROPIC_API_KEY="$LITELLM_MASTER_KEY"
-  export ANTHROPIC_AUTH_TOKEN="$LITELLM_MASTER_KEY"
+  unset ANTHROPIC_AUTH_TOKEN
   export ANTHROPIC_DEFAULT_OPUS_MODEL="$CLAUDE_OPUS_ALIAS"
   export ANTHROPIC_DEFAULT_SONNET_MODEL="$CLAUDE_SONNET_ALIAS"
   export ANTHROPIC_DEFAULT_HAIKU_MODEL="$CLAUDE_HAIKU_ALIAS"
