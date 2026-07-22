@@ -48,12 +48,24 @@ cai_prompt_secret_default() {
     return 0
   fi
   if [ -n "$__default" ]; then
-    printf '%s [saved — Enter to keep]: ' "$__prompt" >&2
+    cai_log "${__prompt} — press Enter to keep saved token, or paste a new one:"
   else
-    printf '%s: ' "$__prompt" >&2
+    cai_log "${__prompt} — paste token, then press Enter:"
   fi
-  read -rs __reply || __reply=""
-  printf '\n' >&2
+  cai_log "(Visible while pasting — avoids terminal hang with long JWTs.)"
+
+  # read -rs + bracketed paste hangs on long JWT pastes in many terminals (Cursor, iTerm, etc.)
+  if [ -r /dev/tty ]; then
+    printf '\e[?2004l' >/dev/tty 2>/dev/null || true
+    read -r __reply </dev/tty || __reply=""
+    printf '\e[?2004h' >/dev/tty 2>/dev/null || true
+  else
+    read -r __reply || __reply=""
+  fi
+
+  # Trim whitespace/newlines accidentally included when pasting
+  __reply="$(printf '%s' "$__reply" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+
   if [ -z "$__reply" ]; then __reply="$__default"; fi
   printf -v "$__var" '%s' "$__reply"
 }
@@ -273,6 +285,7 @@ cai_prompt_user_config() {
   [ -n "$input_url" ] || cai_die "Endpoint URL is required."
   [ -n "$input_token" ] || cai_die "CDP token is required."
 
+  cai_log "Checking endpoint (may take a few seconds) ..."
   CAI_API_BASE="$(cai_normalize_url "$input_url" "$input_token")"
   endpoint_kind="$(cai_detect_endpoint_kind "$CAI_API_BASE")"
   cai_log "Endpoint type: ${endpoint_kind} (${CAI_API_BASE})"

@@ -8,9 +8,26 @@ Claude Code expects Anthropic's API. CAI Inference exposes OpenAI's API. A local
 claude-cai  →  LiteLLM (localhost:4000)  →  your CAI endpoint
 ```
 
+## Why use AI-assisted coding on Cloudera AI Inference?
+
+Pairing agentic coding tools like Claude Code with Cloudera AI Inference gives you the speed of AI-assisted development—auto-generate, debug, and iterate in-line—without sending code or data to a third-party API. Models run where your data already lives (on-prem, cloud, or air-gapped), so there is zero data egress, native access to enterprise data, and no time lost on API stitching or environment friction. You keep full control over which models you run (open-weight, proprietary, or hybrid), how inference is routed, and how access is governed to meet regulatory requirements. On tokenomics, CAI Inference eliminates the per-token SaaS tax: you shift from unpredictable API spend to predictable infrastructure cost, run high-volume agent, RAG, and batch workloads without cost explosion, and optimize GPU reuse through autoscaling—turning weeks of AI application delivery into hours while you own your data and your AI.
+
 ---
 
-## 1. Install (one time)
+## 1. Get this repo
+
+**Clone:**
+
+```bash
+git clone https://github.com/kevinbtalbert/Claude-CLI-with-CAI-Inference.git
+cd Claude-CLI-with-CAI-Inference
+```
+
+**Or download:** open the [GitHub repo](https://github.com/kevinbtalbert/Claude-CLI-with-CAI-Inference), click **Code → Download ZIP**, unzip, and `cd` into the folder.
+
+---
+
+## 2. Install (one time)
 
 **Requires:** Python 3.9+, curl, network access to your CAI endpoint.
 
@@ -30,7 +47,7 @@ On reload, press **Enter** to keep saved URL and token.
 
 ---
 
-## 2. Get your URL and token
+## 3. Get your URL and token
 
 **URL** — copy from your model's **Code Sample** tab in the Cloudera console. Either format works:
 
@@ -44,9 +61,11 @@ On reload, press **Enter** to keep saved URL and token.
 - **Generate JWT Token** on the Model Endpoint page (quick test), or
 - **Knox JWT** from Data Lake → Token Integration (recommended for daily use)
 
+Paste the token and press **Enter**. It will be visible while pasting (this avoids a known terminal hang with long JWTs). Alternatively: `export CAI_CDP_TOKEN='...'` before running the installer.
+
 ---
 
-## 3. Run Claude Code (every session)
+## 4. Run Claude Code (every session)
 
 ```bash
 claude-cai
@@ -68,6 +87,7 @@ claude-cai --stop-proxy              # stop background LiteLLM
 |---------|-----|
 | `command not found: claude-cai` | Add `~/.local/bin` to your PATH, or re-run the installer |
 | `401 Unauthorized` | JWT expired — generate a new one and run `claude-cai --reconfigure` |
+| Paste JWT then nothing happens | Paste token, press **Enter**, wait for "Checking endpoint..." — or set `CAI_CDP_TOKEN` in the environment |
 | Chat works, tools don't | Model needs tool calling enabled on the endpoint (vLLM: `--enable-auto-tool-choice --tool-call-parser <parser>`) |
 | `Not installed` | Run `./scripts/install-cai-claude.sh` |
 
