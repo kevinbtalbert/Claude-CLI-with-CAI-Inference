@@ -79,6 +79,30 @@ claude-cai --stop-proxy              # stop background LiteLLM
 
 ---
 
+## vLLM endpoints: “model not found” (Qwen, Hermes, etc.)
+
+Some **vLLM** CAI endpoints (URLs ending in `/openai/v1`) fail with Claude Code errors like:
+
+> There's an issue with the selected model (claude-sonnet-4-6). It may not exist or you may not have access to it.
+
+**NIM** endpoints (e.g. Nemotron, URL ending in `/v1`) often work without this step.
+
+**What's going on:** Claude Code talks to LiteLLM using Anthropic's API. Recent LiteLLM may forward those requests to your CAI endpoint as **`/openai/v1/responses`**. Many vLLM deployments only expose **`/openai/v1/chat/completions`**, so the proxy gets **404 Not Found**. That shows up in Claude Code as a "model" error even though your `claude-cai` config is fine.
+
+**Fix:** Tell LiteLLM to use chat completions instead, then restart the proxy (the running LiteLLM process must be restarted to pick this up):
+
+```bash
+export LITELLM_USE_CHAT_COMPLETIONS_URL_FOR_ANTHROPIC_MESSAGES=true
+claude-cai --stop-proxy
+claude-cai
+```
+
+To apply this every time, add the `export` line to your shell profile (`~/.zshrc` or `~/.bashrc`).
+
+Check `~/.claude/cai-inference/litellm.log` if problems continue — you want upstream calls to **`/chat/completions`**, not **`/responses`**.
+
+---
+
 ## Troubleshooting
 
 | Problem | Fix |
@@ -86,6 +110,7 @@ claude-cai --stop-proxy              # stop background LiteLLM
 | `command not found: claude-cai` | Add `~/.local/bin` to your PATH, or re-run the installer |
 | `401 Unauthorized` | JWT expired — generate a new one and run `claude-cai --reconfigure` |
 | Can't type or press Enter after pasting JWT | Terminal line is full (~1KB). Open a **new** terminal tab and set as an export first. |
+| vLLM model error / 404 on `/responses` in `litellm.log` | See [vLLM endpoints](#vllm-endpoints-model-not-found-qwen-hermes-etc) above |
 | Chat works, tools don't | Model needs tool calling enabled on the endpoint (vLLM: `--enable-auto-tool-choice --tool-call-parser <parser>`) |
 | `Not installed` | Run `./scripts/install-cai-claude.sh` |
 
