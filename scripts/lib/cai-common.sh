@@ -298,16 +298,19 @@ model_list:
       model: ${openai_model}
       api_base: ${CAI_API_BASE}
       api_key: os.environ/CAI_CDP_TOKEN
+      max_tokens: 32768
   - model_name: ${CLAUDE_SONNET_ALIAS}
     litellm_params:
       model: ${openai_model}
       api_base: ${CAI_API_BASE}
       api_key: os.environ/CAI_CDP_TOKEN
+      max_tokens: 32768
   - model_name: ${CLAUDE_HAIKU_ALIAS}
     litellm_params:
       model: ${openai_model}
       api_base: ${CAI_API_BASE}
       api_key: os.environ/CAI_CDP_TOKEN
+      max_tokens: 32768
 
 litellm_settings:
   master_key: ${LITELLM_MASTER_KEY}
